@@ -48,6 +48,10 @@ function GenerateInputs() {
       input.type = "text";
       input.id = `guess-${i}-letter-${j}`;
       input.maxLength = 1;
+      input.setAttribute("autocomplete", "off");
+      input.setAttribute("autocorrect", "off");
+      input.setAttribute("autocapitalize", "off");
+      input.setAttribute("spellcheck", "false");
       tryDiv.appendChild(input);
     }
 
@@ -103,13 +107,13 @@ function handleGuesses() {
 
   // Check if user win or lose
   if (successGuess) {
-    messageArea.innerHTML = `You win the word is <span>${wordToGuess}</span>`;
-
     if (numberOfHints === 2) {
       messageArea.innerHTML = `
       You win the word is <span>${wordToGuess}</span>
       <p>Congrats you  didn't use hints</p>
       `;
+    } else {
+      messageArea.innerHTML = `You win the word is <span>${wordToGuess}</span>`;
     }
 
     // Disable all inputs
@@ -119,6 +123,7 @@ function handleGuesses() {
     // Disable guess button
     checkButton.disabled = true;
     getHintButton.disabled = true;
+    scheduleRestart();
   } else {
     document
       .querySelector(`.try-${currentTry}`)
@@ -145,8 +150,41 @@ function handleGuesses() {
       checkButton.disabled = true;
       getHintButton.disabled = true;
       messageArea.innerHTML = `You lose the word is <span>${wordToGuess}</span>`;
+      scheduleRestart();
     }
   }
+}
+
+function scheduleRestart() {
+  let seconds = 3;
+  const originalHTML = messageArea.innerHTML;
+  messageArea.innerHTML += `<p class="restart-countdown">New game in ${seconds}...</p>`;
+
+  const countdown = setInterval(() => {
+    seconds--;
+    const countdownEl = messageArea.querySelector(".restart-countdown");
+    if (seconds > 0) {
+      countdownEl.textContent = `New game in ${seconds}...`;
+    } else {
+      clearInterval(countdown);
+      restartGame();
+    }
+  }, 1000);
+}
+
+function restartGame() {
+  currentTry = 1;
+  numberOfHints = 2;
+  wordToGuess =
+    wordsList[Math.floor(Math.random() * wordsList.length)].toLowerCase();
+
+  messageArea.innerHTML = "";
+  document.querySelector(".hint span").innerHTML = numberOfHints;
+  getHintButton.disabled = false;
+  checkButton.disabled = false;
+
+  document.querySelector(".inputs").innerHTML = "";
+  GenerateInputs();
 }
 
 function getHint() {
@@ -174,10 +212,10 @@ function getHint() {
 }
 
 function handleBackspace(event) {
+  const inputs = document.querySelectorAll("input:not([disabled])");
+  const currentIndex = Array.from(inputs).indexOf(document.activeElement);
+
   if (event.key === "Backspace") {
-    const inputs = document.querySelectorAll("input:not([disabled])");
-    const currentIndex = Array.from(inputs).indexOf(document.activeElement);
-    // console.log(currentIndex);
     if (currentIndex > 0) {
       const currentInput = inputs[currentIndex];
       const prevInput = inputs[currentIndex - 1];
@@ -185,6 +223,14 @@ function handleBackspace(event) {
       prevInput.value = "";
       prevInput.focus();
     }
+  } else if (event.key === "ArrowLeft") {
+    event.preventDefault();
+    if (currentIndex > 0) inputs[currentIndex - 1].focus();
+  } else if (event.key === "ArrowRight") {
+    event.preventDefault();
+    if (currentIndex < inputs.length - 1) inputs[currentIndex + 1].focus();
+  } else if (event.key === "Enter") {
+    if (!checkButton.disabled) handleGuesses();
   }
 }
 
